@@ -1,3 +1,6 @@
+import 'dart:math';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:prototype/match_card.dart';
 import 'package:prototype/profiles.dart';
@@ -56,6 +59,7 @@ class _MatchSelectionScreenState extends State<MatchSelectionScreen> {
           icon: new Icon(
             Icons.person,
             color: Colors.grey,
+            size: 40.0,
           ),
           onPressed: () {
             // TODO:
@@ -70,6 +74,7 @@ class _MatchSelectionScreenState extends State<MatchSelectionScreen> {
             icon: new Icon(
               Icons.chat_bubble,
               color: Colors.grey,
+              size: 40.0,
             ),
             onPressed: () {
               // TODO:
@@ -82,17 +87,7 @@ class _MatchSelectionScreenState extends State<MatchSelectionScreen> {
           new Expanded(
             child: new Padding(
               padding: const EdgeInsets.all(16.0),
-              child: new Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  new ClipRRect(
-                    borderRadius: new BorderRadius.circular(10.0),
-                    child: new MatchCard(
-                      profile: demoMatches[0],
-                    ),
-                  )
-                ],
-              ),
+              child: new CardStack(),
             ),
           ),
           new Padding(
@@ -119,6 +114,101 @@ class _MatchSelectionScreenState extends State<MatchSelectionScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class CardStack extends StatefulWidget {
+  @override
+  _CardStackState createState() => new _CardStackState();
+}
+
+class _CardStackState extends State<CardStack> with TickerProviderStateMixin {
+  Offset _startDragPoint;
+  Offset _positionOffset = const Offset(0.0, 0.0);
+  Offset _cardMotionOrigin;
+  double _rotation = 0.0;
+  Offset _startSpringOffset;
+  double _startSpringRotation;
+  AnimationController _springBackController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _springBackController = new AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )
+      ..addListener(() {
+        setState(() {
+          _positionOffset = Offset.lerp(
+            _startSpringOffset,
+            const Offset(0.0, 0.0),
+            Curves.elasticOut.transform(_springBackController.value),
+          );
+          _rotation = lerpDouble(
+            _startSpringRotation,
+            0.0,
+            const Interval(0.0, 0.3).transform(_springBackController.value),
+          );
+        });
+      })
+      ..addStatusListener((AnimationStatus status) {
+        if (status == AnimationStatus.completed) {
+          _startSpringOffset = null;
+        }
+      });
+  }
+
+  void _onPanStart(DragStartDetails details) {
+    _startDragPoint = details.globalPosition;
+    _cardMotionOrigin = (context.findRenderObject() as RenderBox).globalToLocal(_startDragPoint);
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    setState(() {
+      _positionOffset = details.globalPosition - _startDragPoint;
+
+      final rotationCornerMultiplier = _cardMotionOrigin.dy >= context.size.height / 2 ? -1 : 1;
+      _rotation = (pi / 8) *
+          (_positionOffset.dx / MediaQuery.of(context).size.width) *
+          rotationCornerMultiplier;
+    });
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    setState(() {
+      _startSpringOffset = _positionOffset;
+      _startSpringRotation = _rotation;
+      _springBackController.forward(from: 0.0);
+
+      _startDragPoint = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Matrix4 cardTransform =
+        new Matrix4.translationValues(_positionOffset.dx, _positionOffset.dy, 0.0);
+    cardTransform.rotateZ(_rotation);
+
+    return new Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        new GestureDetector(
+          onPanStart: _onPanStart,
+          onPanUpdate: _onPanUpdate,
+          onPanEnd: _onPanEnd,
+          child: new Transform(
+            transform: cardTransform,
+            origin: _cardMotionOrigin,
+            child: new MatchCard(
+              profile: demoMatches[0],
+            ),
+          ),
+        )
+      ],
     );
   }
 }

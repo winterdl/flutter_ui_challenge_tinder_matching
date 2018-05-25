@@ -20,7 +20,7 @@ class _MatchCardState extends State<MatchCard> {
       setState(() => _photoIndex++);
     }
 
-    Scaffold.of(context).showSnackBar(new SnackBar(content: new Text('Next Image')));
+//    Scaffold.of(context).showSnackBar(new SnackBar(content: new Text('Next Image')));
   }
 
   void _prevImage() {
@@ -28,7 +28,7 @@ class _MatchCardState extends State<MatchCard> {
       setState(() => _photoIndex--);
     }
 
-    Scaffold.of(context).showSnackBar(new SnackBar(content: new Text('Prev Image')));
+//    Scaffold.of(context).showSnackBar(new SnackBar(content: new Text('Prev Image')));
   }
 
   void _showProfile() {
@@ -138,14 +138,27 @@ class _MatchCardState extends State<MatchCard> {
   @override
   Widget build(BuildContext context) {
     return new Container(
-      child: new Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          _buildPhotoDisplay(),
-          _buildPhotoControls(),
-          _buildPhotoSelectorIndicator(),
-          _buildProfileSynopsis(),
+      decoration: new BoxDecoration(
+        borderRadius: new BorderRadius.circular(10.0),
+        boxShadow: [
+          new BoxShadow(
+            color: const Color(0x11000000),
+            blurRadius: 5.0,
+            spreadRadius: 2.0,
+          ),
         ],
+      ),
+      child: new ClipRRect(
+        borderRadius: new BorderRadius.circular(10.0),
+        child: new Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            _buildPhotoDisplay(),
+            _buildPhotoControls(),
+            _buildPhotoSelectorIndicator(),
+            _buildProfileSynopsis(),
+          ],
+        ),
       ),
     );
   }
