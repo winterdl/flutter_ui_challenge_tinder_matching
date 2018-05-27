@@ -11,12 +11,24 @@ class MatchSelectionScreen extends StatefulWidget {
 }
 
 class _MatchSelectionScreenState extends State<MatchSelectionScreen> with TickerProviderStateMixin {
+  int _activeCardIndex = 0;
   CardDragController _cardController;
 
   @override
   void initState() {
     super.initState();
-    _cardController = new CardDragController(vsync: this)..addListener(() => setState(() {}));
+    _cardController = new CardDragController(
+        vsync: this,
+        onLiked: () {
+          setState(() => ++_activeCardIndex);
+        },
+        onNoped: () {
+          setState(() => ++_activeCardIndex);
+        },
+        onSuperLiked: () {
+          setState(() => ++_activeCardIndex);
+        })
+      ..addListener(() => setState(() {}));
   }
 
   @override
@@ -100,6 +112,7 @@ class _MatchSelectionScreenState extends State<MatchSelectionScreen> with Ticker
             child: new Padding(
               padding: const EdgeInsets.all(16.0),
               child: new CardStack(
+                cardIndex: _activeCardIndex,
                 controller: _cardController,
               ),
             ),
@@ -139,9 +152,11 @@ class _MatchSelectionScreenState extends State<MatchSelectionScreen> with Ticker
 }
 
 class CardStack extends StatefulWidget {
+  final int cardIndex;
   final CardDragController controller;
 
   CardStack({
+    this.cardIndex = 0,
     this.controller,
   });
 
@@ -197,9 +212,27 @@ class _CardStackState extends State<CardStack> with TickerProviderStateMixin {
     );
     cardTransform.rotateZ(widget.controller.rotation);
 
+    final maxDecision = max(
+        widget.controller.percentLike,
+        max(
+          widget.controller.percentNope,
+          widget.controller.percentSuperLike,
+        ));
+
     return new Stack(
       fit: StackFit.expand,
       children: <Widget>[
+        new Transform(
+          transform: new Matrix4.identity()
+            ..scale(
+              0.9 + (0.1 * maxDecision),
+              0.9 + (0.1 * maxDecision),
+            ),
+          origin: widget.controller.dragOrigin,
+          child: new MatchCard(
+            profile: demoMatches[(widget.cardIndex + 1) % demoMatches.length],
+          ),
+        ),
         new GestureDetector(
           onPanStart: _onPanStart,
           onPanUpdate: _onPanUpdate,
@@ -208,16 +241,19 @@ class _CardStackState extends State<CardStack> with TickerProviderStateMixin {
             transform: cardTransform,
             origin: widget.controller.dragOrigin,
             child: new MatchCard(
-              profile: demoMatches[0],
+              profile: demoMatches[widget.cardIndex % demoMatches.length],
             ),
           ),
-        )
+        ),
       ],
     );
   }
 }
 
 class CardDragController extends ChangeNotifier {
+  final VoidCallback onLiked;
+  final VoidCallback onNoped;
+  final VoidCallback onSuperLiked;
   final AnimationController _springBackController;
   final AnimationController _slideOutController;
 
@@ -232,8 +268,12 @@ class CardDragController extends ChangeNotifier {
 
   Offset _startSlideOffset;
   Offset _endSlideOffset;
+  VoidCallback _onSlideEndCallback;
 
   CardDragController({
+    this.onLiked,
+    this.onNoped,
+    this.onSuperLiked,
     TickerProvider vsync,
   })  : _springBackController = new AnimationController(vsync: vsync),
         _slideOutController = new AnimationController(vsync: vsync) {
@@ -271,6 +311,10 @@ class CardDragController extends ChangeNotifier {
           // TODO: clean up
           _positionOffset = const Offset(0.0, 0.0);
 
+          if (null != _onSlideEndCallback) {
+            _onSlideEndCallback();
+          }
+
           notifyListeners();
         }
       });
@@ -295,14 +339,26 @@ class CardDragController extends ChangeNotifier {
   }
 
   double get percentLike {
+    if (_draggableExtent == null) {
+      return 0.0;
+    }
+
     return (_positionOffset.dx / _draggableExtent.width).clamp(0.0, 1.0);
   }
 
   double get percentNope {
+    if (_draggableExtent == null) {
+      return 0.0;
+    }
+
     return (-_positionOffset.dx / _draggableExtent.width).clamp(0.0, 1.0);
   }
 
   double get percentSuperLike {
+    if (_draggableExtent == null) {
+      return 0.0;
+    }
+
     return (-_positionOffset.dy / _draggableExtent.height).clamp(0.0, 1.0);
   }
 
@@ -328,6 +384,8 @@ class CardDragController extends ChangeNotifier {
     _startSlideOffset = const Offset(0.0, 0.0);
     _endSlideOffset = new Offset(_cardSize.width, 0.0);
     _slideOutController.forward(from: 0.0);
+
+    _onSlideEndCallback = onLiked;
   }
 
   void nope(RenderBox cardRenderBox) {
@@ -338,6 +396,8 @@ class CardDragController extends ChangeNotifier {
     _startSlideOffset = const Offset(0.0, 0.0);
     _endSlideOffset = new Offset(-_cardSize.width, 0.0);
     _slideOutController.forward(from: 0.0);
+
+    _onSlideEndCallback = onNoped;
   }
 
   void superLike(RenderBox cardRenderBox) {
@@ -346,6 +406,8 @@ class CardDragController extends ChangeNotifier {
     _startSlideOffset = const Offset(0.0, 0.0);
     _endSlideOffset = new Offset(0.0, -_cardSize.height);
     _slideOutController.forward(from: 0.0);
+
+    _onSlideEndCallback = onSuperLiked;
   }
 
   void onDragStart(RenderBox cardRenderBox, Offset dragPositionWithinExtent) {
@@ -367,14 +429,20 @@ class CardDragController extends ChangeNotifier {
       _startSlideOffset = _positionOffset;
       _endSlideOffset = _startSlideOffset + (slideDirection * _draggableExtent.width);
       _slideOutController.forward(from: 0.0);
+
+      _onSlideEndCallback = onLiked;
     } else if (percentNope > 0.5) {
       _startSlideOffset = _positionOffset;
       _endSlideOffset = _startSlideOffset + (slideDirection * _draggableExtent.width);
       _slideOutController.forward(from: 0.0);
+
+      _onSlideEndCallback = onNoped;
     } else if (percentSuperLike > 0.4) {
       _startSlideOffset = _positionOffset;
       _endSlideOffset = _startSlideOffset + (slideDirection * _draggableExtent.height);
       _slideOutController.forward(from: 0.0);
+
+      _onSlideEndCallback = onSuperLiked;
     } else {
       _startSpringOffset = _positionOffset;
       _springBackController.forward(from: 0.0);
