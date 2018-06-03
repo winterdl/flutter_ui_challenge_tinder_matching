@@ -68,22 +68,27 @@ class _MyHomePageState extends State<MyHomePage> {
             new RoundIconButton.small(
               icon: Icons.refresh,
               iconColor: Colors.orange,
+              onPressed: () {},
             ),
             new RoundIconButton.large(
               icon: Icons.clear,
               iconColor: Colors.red,
+              onPressed: () {},
             ),
             new RoundIconButton.small(
               icon: Icons.star,
               iconColor: Colors.blue,
+              onPressed: () {},
             ),
             new RoundIconButton.large(
               icon: Icons.favorite,
               iconColor: Colors.green,
+              onPressed: () {},
             ),
             new RoundIconButton.small(
               icon: Icons.lock,
               iconColor: Colors.purple,
+              onPressed: () {},
             ),
           ],
         ),
@@ -91,29 +96,11 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget _buildCardStack() {
-    return new AnchoredOverlay(
-      showOverlay: true,
-      child: new Center(),
-      overlayBuilder: (BuildContext context, Rect anchorBounds, Offset anchor) {
-        return CenterAbout(
-          position: anchor,
-          child: new Container(
-            width: anchorBounds.width,
-            height: anchorBounds.height,
-            padding: const EdgeInsets.all(16.0),
-            child: new ProfileCard(),
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
       appBar: _buildAppBar(),
-      body: _buildCardStack(),
+      body: new DraggableCard(),
       bottomNavigationBar: _buildBottomBar(),
     );
   }
